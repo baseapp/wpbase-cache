@@ -12,10 +12,4 @@ License: GPL2
 defined('ABSPATH') or die();
 define('WPOVEN_MANAGER_DIR', WP_PLUGIN_DIR.'/wpoven-manager');
 
-require WPOVEN_MANAGER_DIR.'/nginx-compatibility.php';
-
 require WPOVEN_MANAGER_DIR.'/wpoven-manager-admin.php';
-
-require WPOVEN_MANAGER_DIR.'/wpoven-manager-maintenance.php';
-
-require WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php';

@@ -1,9 +1,5 @@
 <?php
-$options = get_option('wpoven_manager_maintenance');
-
-if($options === "1" && !is_admin()){
-    add_action('template_redirect', 'wpoven_manager_show_maintenance');
-}
+add_action('template_redirect', 'wpoven_manager_show_maintenance');
 
 function wpoven_manager_show_maintenance() { ?>
     <html>

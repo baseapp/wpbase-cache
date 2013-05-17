@@ -6,12 +6,16 @@ class WPOven_Manager_Admin {
 	    add_action('admin_menu', array($this, 'add_wpoven_manager_page'));
 	    add_action('admin_init', array($this, 'wpoven_manager_page_init'));
             add_action('update_option_wpoven_manager_maintenance', array($this, 'change_maintenance'), 10, 2);
+            add_action('update_option_wpoven_manager_cache', array($this, 'change_cache'), 10, 2);
             
             add_action('admin_footer', array($this, 'add_javascript'));
             add_action('wp_ajax_wpoven_manager_flush_all', array($this, 'ajax_flush_cache'));
             
-            register_deactivation_hook(WPOVEN_MANAGER_DIR.'/wpoven-manager.php', array($this, 'deactivate_plugin'));
+            register_activation_hook(WPOVEN_MANAGER_DIR.'/wpoven-manager.php', array($this, 'activate'));
+            register_deactivation_hook(WPOVEN_MANAGER_DIR.'/wpoven-manager.php', array($this, 'deactivate'));
 	}
+        
+        $this->load_plugins();
     }
     
     public function add_wpoven_manager_page() {
@@ -41,6 +45,7 @@ class WPOven_Manager_Admin {
     
     public function wpoven_manager_page_init() {
         register_setting('wpoven_manager_options', 'wpoven_manager_maintenance');
+        register_setting('wpoven_manager_options', 'wpoven_manager_cache');
         
         add_settings_section(
             'wpoven_manager_section',
@@ -57,6 +62,14 @@ class WPOven_Manager_Admin {
             'wpoven_manager_section'
         );
         
+        add_settings_field(
+            'wpoven_manager_cache',
+            'Activate Caching',
+            array($this, 'wpoven_manager_cache_input'),
+            'wpovenmanager',
+            'wpoven_manager_section'
+        );
+        
     }
     
     public function wpoven_manager_section_desc() {
@@ -69,8 +82,27 @@ class WPOven_Manager_Admin {
         echo "<input id='wpoven_manager_maintenance' name='wpoven_manager_maintenance' type='checkbox' value='1' $checked />";
     }
     
+    public function wpoven_manager_cache_input() {
+        $options = get_option('wpoven_manager_cache');
+        $checked = checked('1', $options, FALSE);
+        echo "<input id='wpoven_manager_cache' name='wpoven_manager_cache' type='checkbox' value='1' $checked />";
+    }
+    
     public function change_maintenance($oldvalue, $newvalue) {
         if($oldvalue !== $newvalue){
+            if ( function_exists( 'w3tc_pgcache_flush' ) ) {
+                w3tc_pgcache_flush();
+            }
+            if ( function_exists( 'w3tc_varnish_flush' ) ) {
+                w3tc_varnish_flush();
+            }
+        }
+    }
+    
+    public function change_cache($oldvalue, $newvalue) {
+        if($oldvalue !== $newvalue){
+            require_once(WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php');
+            
             if ( function_exists( 'w3tc_pgcache_flush' ) ) {
                 w3tc_pgcache_flush();
             }
@@ -128,8 +160,13 @@ class WPOven_Manager_Admin {
         die;
     }
     
-    public function deactivate_plugin() {
+    public function activate() {
+        add_option('wpoven_manager_cache', '1');
+    }
+    
+    public function deactivate() {
         delete_option('wpoven_manager_maintenance');
+        delete_option('wpoven_manager_cache');
         
         if ( function_exists( 'w3tc_pgcache_flush' ) ) {
             w3tc_pgcache_flush();
@@ -137,6 +174,22 @@ class WPOven_Manager_Admin {
         
         if ( function_exists( 'w3tc_varnish_flush' ) ) {
             w3tc_varnish_flush();
+        }
+    }
+    
+    public function load_plugins(){
+        require_once(WPOVEN_MANAGER_DIR.'/nginx-compatibility.php');
+        
+        $maintenance = get_option('wpoven_manager_maintenance');
+
+        if($maintenance === "1" && !is_admin()){
+            require_once(WPOVEN_MANAGER_DIR.'/wpoven-manager-maintenance.php');
+        }
+        
+        $cache = get_option('wpoven_manager_cache');
+
+        if($cache === "1"){
+            require_once(WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php');
         }
     }
 }
