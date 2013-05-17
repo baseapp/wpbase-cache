@@ -29,7 +29,8 @@ function wpoven_manager_show_maintenance() { ?>
           <div class="container">
             <h1>Maintenance Mode</h1>
             <p>Site is under maintenance please check again after some time.</p>
-        </div>
+          </div>
+        </body>
     </html>
     <?php 
     exit();

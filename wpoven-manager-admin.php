@@ -6,6 +6,11 @@ class WPOven_Manager_Admin {
 	    add_action('admin_menu', array($this, 'add_wpoven_manager_page'));
 	    add_action('admin_init', array($this, 'wpoven_manager_page_init'));
             add_action('update_option_wpoven_manager_maintenance', array($this, 'change_maintenance'), 10, 2);
+            
+            add_action('admin_footer', array($this, 'add_javascript'));
+            add_action('wp_ajax_wpoven_manager_flush_all', array($this, 'ajax_flush_cache'));
+            
+            register_deactivation_hook(WPOVEN_MANAGER_DIR.'/wpoven-manager.php', array($this, 'deactivate_plugin'));
 	}
     }
     
@@ -20,7 +25,7 @@ class WPOven_Manager_Admin {
         ?>
         <div class="wrap">
             <?php screen_icon(); ?>
-            <h2>WPOven Manager Settings</h2>
+            <h2>WPOVEN</h2>
             <form method="post" action="options.php">
                 <?php
                     settings_fields('wpoven_manager_options');	
@@ -28,6 +33,8 @@ class WPOven_Manager_Admin {
                 ?>
                 <?php submit_button(); ?>
             </form>
+            
+            <a class="button" id="wpoven_manager_flush_all">Empty All Caches</a>
         </div>
         <?php
     }
@@ -49,10 +56,11 @@ class WPOven_Manager_Admin {
             'wpovenmanager',
             'wpoven_manager_section'
         );
+        
     }
     
     public function wpoven_manager_section_desc() {
-        echo 'These settings are part of wpoven manager plugin.';
+        //echo 'These settings are part of wpoven manager plugin.';
     }
     
     public function wpoven_manager_maintenance_input() {
@@ -69,6 +77,66 @@ class WPOven_Manager_Admin {
             if ( function_exists( 'w3tc_varnish_flush' ) ) {
                 w3tc_varnish_flush();
             }
+        }
+    }
+    
+    public function add_javascript() {
+        $nonce = wp_create_nonce('wpoven_manager_flush_all');
+        ?>
+        <script type="text/javascript" >
+        jQuery(document).ready(function($) {
+
+            $('#wpoven_manager_flush_all').click(function(){
+                var element = $(this);
+                var data = {
+                    action: 'wpoven_manager_flush_all',
+                    _ajax_nonce: '<?php echo $nonce; ?>'
+                };
+
+                $.post(ajaxurl, data, function(response) {
+                    if(response == 1) {
+                        message = 'Sucessfully flushed all caches';
+                    } else if(response == -1) {
+                        message = 'Unauthorised request';
+                    } else {
+                        message = response;
+                    }
+                    element.replaceWith(message);
+                });
+            });
+        });
+        </script>
+        <?php
+    }
+    
+    public function ajax_flush_cache() {
+        check_ajax_referer('wpoven_manager_flush_all');
+        
+        if( ! current_user_can('manage_options') ) {
+            wp_die( __('You do not have sufficient permissions to perform this action.') );
+        }
+        
+        if ( function_exists( 'w3tc_pgcache_flush' ) ) {
+            w3tc_pgcache_flush();
+        }
+        
+        if ( function_exists( 'w3tc_varnish_flush' ) ) {
+            w3tc_varnish_flush();
+        }
+        
+        echo 1;
+        die;
+    }
+    
+    public function deactivate_plugin() {
+        delete_option('wpoven_manager_maintenance');
+        
+        if ( function_exists( 'w3tc_pgcache_flush' ) ) {
+            w3tc_pgcache_flush();
+        }
+        
+        if ( function_exists( 'w3tc_varnish_flush' ) ) {
+            w3tc_varnish_flush();
         }
     }
 }
