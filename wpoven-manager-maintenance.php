@@ -1,11 +1,37 @@
 <?php
-add_action('template_redirect', 'wpoven_manager_show_maintenance');
+if(!is_admin()){
+    add_action('template_redirect', 'wpoven_manager_show_maintenance');
+}
 
-function wpoven_manager_show_maintenance() { ?>
+function wpoven_manager_show_maintenance() {
+    if (get_bloginfo('charset')) {
+        $charset = get_bloginfo('charset');
+    } else {
+        $charset = 'UTF-8';
+    }
+    
+    $protocol = $_SERVER["SERVER_PROTOCOL"];
+    if ('HTTP/1.1' != $protocol && 'HTTP/1.0' != $protocol){
+        $protocol = 'HTTP/1.0';
+    }
+    
+    $status_code = 503;
+    $backtime = 86400;
+    
+    if (get_bloginfo('name')) {
+        $title = get_bloginfo('name') . ' | Down for maintenance';
+    } else {
+        $title = 'Down for maintenance';
+    }
+
+    header( "Content-type: text/html; charset=$charset" );
+    header( "$protocol $status_code Service Unavailable", TRUE, $status_code );
+    header( "Retry-After: $backtime" );
+    ?>
     <html>
         <head>
           <meta charset="utf-8">
-          <title>Maintenance Mode</title>
+          <title><?php echo $title; ?></title>
           <style>
             ::-moz-selection { background: #fe57a1; color: #fff; text-shadow: none; }
             ::selection { background: #fe57a1; color: #fff; text-shadow: none; }
@@ -24,7 +50,7 @@ function wpoven_manager_show_maintenance() { ?>
         <body>
           <div class="container">
             <h1>Maintenance Mode</h1>
-            <p>Site is under maintenance please check again after some time.</p>
+            <p>Site is currently under maintenance please check again after some time.</p>
           </div>
         </body>
     </html>

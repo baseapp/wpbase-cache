@@ -88,30 +88,6 @@ class WPOven_Manager_Admin {
         echo "<input id='wpoven_manager_cache' name='wpoven_manager_cache' type='checkbox' value='1' $checked />";
     }
     
-    public function change_maintenance($oldvalue, $newvalue) {
-        if($oldvalue !== $newvalue){
-            if ( function_exists( 'w3tc_pgcache_flush' ) ) {
-                w3tc_pgcache_flush();
-            }
-            if ( function_exists( 'w3tc_varnish_flush' ) ) {
-                w3tc_varnish_flush();
-            }
-        }
-    }
-    
-    public function change_cache($oldvalue, $newvalue) {
-        if($oldvalue !== $newvalue){
-            require_once(WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php');
-            
-            if ( function_exists( 'w3tc_pgcache_flush' ) ) {
-                w3tc_pgcache_flush();
-            }
-            if ( function_exists( 'w3tc_varnish_flush' ) ) {
-                w3tc_varnish_flush();
-            }
-        }
-    }
-    
     public function add_javascript() {
         $nonce = wp_create_nonce('wpoven_manager_flush_all');
         ?>
@@ -144,54 +120,99 @@ class WPOven_Manager_Admin {
     public function ajax_flush_cache() {
         check_ajax_referer('wpoven_manager_flush_all');
         
-        if( ! current_user_can('manage_options') ) {
+        if(!current_user_can('manage_options')) {
             wp_die( __('You do not have sufficient permissions to perform this action.') );
         }
         
-        if ( function_exists( 'w3tc_pgcache_flush' ) ) {
-            w3tc_pgcache_flush();
-        }
-        
-        if ( function_exists( 'w3tc_varnish_flush' ) ) {
-            w3tc_varnish_flush();
-        }
+        $this->w3tc_cache_flush();
         
         echo 1;
         die;
-    }
-    
-    public function activate() {
-        add_option('wpoven_manager_cache', '1');
-    }
-    
-    public function deactivate() {
-        delete_option('wpoven_manager_maintenance');
-        delete_option('wpoven_manager_cache');
-        
-        if ( function_exists( 'w3tc_pgcache_flush' ) ) {
-            w3tc_pgcache_flush();
-        }
-        
-        if ( function_exists( 'w3tc_varnish_flush' ) ) {
-            w3tc_varnish_flush();
-        }
     }
     
     public function load_plugins(){
         require_once(WPOVEN_MANAGER_DIR.'/nginx-compatibility.php');
         
         $maintenance = get_option('wpoven_manager_maintenance');
-
-        if($maintenance === "1" && !is_admin()){
+        if($maintenance === "1"){
             require_once(WPOVEN_MANAGER_DIR.'/wpoven-manager-maintenance.php');
         }
         
         $cache = get_option('wpoven_manager_cache');
-
         if($cache === "1"){
             require_once(WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php');
         }
     }
+    
+    public function activate() {
+        add_option('wpoven_manager_maintenance', '');
+        add_option('wpoven_manager_cache', '1');
+        $this->activate_w3tc();
+        $this->w3tc_cache_flush();
+    }
+    
+    public function deactivate() {
+        $this->w3tc_cache_flush();
+        delete_option('wpoven_manager_maintenance');
+        delete_option('wpoven_manager_cache');
+    }
+    
+    public function activate_w3tc() {
+        require_once(WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php');
+        if(isset($root)){
+            $root->activate(false);
+        }
+    }
+    
+    public function deactivate_w3tc() {
+        require_once(WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php');
+        if(isset($root)){
+            $root->deactivate();
+        } else {
+            $root = w3_instance('W3_Root');
+            $root->deactivate();
+        }
+    }
+    
+    public function w3tc_cache_flush() {
+        if ( function_exists( 'w3tc_pgcache_flush' ) ) {
+            w3tc_pgcache_flush();
+        }
+        if ( function_exists( 'w3tc_minify_flush' ) ) {
+            w3tc_minify_flush();
+        }
+        if ( function_exists( 'w3tc_dbcache_flush' ) ) {
+            w3tc_dbcache_flush();
+        }
+        if ( function_exists( 'w3tc_objectcache_flush' ) ) {
+            w3tc_objectcache_flush();
+        }
+        if ( function_exists( 'w3tc_cdncache_purge' ) ) {
+            w3tc_cdncache_purge();
+        }
+        if ( function_exists( 'w3tc_varnish_flush' ) ) {
+            w3tc_varnish_flush();
+        }
+    }
+    
+    public function change_maintenance($oldvalue, $newvalue) {
+        if($oldvalue !== $newvalue){
+            $this->w3tc_cache_flush();
+        }
+    }
+    
+    public function change_cache($oldvalue, $newvalue) {
+        if($oldvalue !== $newvalue){
+            if('1' === $newvalue) {
+                $this->activate_w3tc();
+                $this->w3tc_cache_flush();
+            } else if('' === (string) $newvalue) {
+                $this->w3tc_cache_flush();
+                $this->deactivate_w3tc();
+            }
+        }
+    }
+    
 }
 
 $wpoven_manager = new WPOven_Manager_Admin();
