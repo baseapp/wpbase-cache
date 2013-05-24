@@ -16,6 +16,8 @@ class WPOven_Manager_Admin {
 	}
         
         $this->load_plugins();
+        
+        add_action('send_headers', array($this, 'send_headers'));
     }
     
     public function add_wpoven_manager_page() {
@@ -133,14 +135,14 @@ class WPOven_Manager_Admin {
     public function load_plugins(){
         require_once(WPOVEN_MANAGER_DIR.'/nginx-compatibility.php');
         
-        $maintenance = get_option('wpoven_manager_maintenance');
-        if($maintenance === "1"){
-            require_once(WPOVEN_MANAGER_DIR.'/wpoven-manager-maintenance.php');
-        }
-        
         $cache = get_option('wpoven_manager_cache');
         if($cache === "1"){
             require_once(WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php');
+        }
+        
+        $maintenance = get_option('wpoven_manager_maintenance');
+        if($maintenance === "1"){
+            require_once(WPOVEN_MANAGER_DIR.'/wpoven-manager-maintenance.php');
         }
     }
     
@@ -211,6 +213,16 @@ class WPOven_Manager_Admin {
                 $this->deactivate_w3tc();
             }
         }
+    }
+    
+    public function send_headers() {
+        $cache = get_option('wpoven_manager_cache');
+        if($cache === "1"){
+            $state = 'On';
+        } else {
+            $state = 'Off';
+        }
+        @header("WPOven-Cache: $state");
     }
     
 }
