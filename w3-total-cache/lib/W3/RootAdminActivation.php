@@ -48,15 +48,14 @@ class W3_RootAdminActivation {
 
             w3_instance('W3_AdminLinks')->link_update($config);
 
+            try {
+                // create folders
+                $e->fix_in_wpadmin($config);
+            } catch (Exception $ex) {
+            }
             // try to save config file if needed, optional thing so exceptions 
             // hidden
             if (!$config->own_config_exists()) {
-                try {
-                    // create folders
-                    $e->fix_in_wpadmin($config);
-                } catch (Exception $ex) {
-                }
-
                 try {
                     $config_admin = w3_instance('W3_ConfigAdmin');
                     $config->import_legacy_config();
