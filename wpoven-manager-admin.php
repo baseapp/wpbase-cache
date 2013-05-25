@@ -10,12 +10,12 @@ class WPOven_Manager_Admin {
             
             add_action('admin_footer', array($this, 'add_javascript'));
             add_action('wp_ajax_wpoven_manager_flush_all', array($this, 'ajax_flush_cache'));
-            
-            register_activation_hook(WPOVEN_MANAGER_DIR.'/wpoven-manager.php', array($this, 'activate'));
-            register_deactivation_hook(WPOVEN_MANAGER_DIR.'/wpoven-manager.php', array($this, 'deactivate'));
 	}
         
         $this->load_plugins();
+        
+        register_activation_hook(WPOVEN_MANAGER_DIR.'/wpoven-manager.php', array($this, 'activate'));
+        register_deactivation_hook(WPOVEN_MANAGER_DIR.'/wpoven-manager.php', array($this, 'deactivate'));
         
         add_action('send_headers', array($this, 'send_headers'));
     }

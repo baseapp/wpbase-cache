@@ -44,8 +44,11 @@ if (!defined('ABSPATH')) {
 /**
  * Abort W3TC loading if WordPress is upgrading
  */
-if (defined('WP_INSTALLING') && WP_INSTALLING)
-    return;
+if (defined('WP_INSTALLING') && WP_INSTALLING){
+    if(!defined('WPOVEN_INSTALLING')){
+        return;
+    }
+}
 
 if (!defined('W3TC_IN_MINIFY')) {
     /**
