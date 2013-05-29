@@ -1,29 +1,29 @@
 <?php
 class WPOven_Manager_Admin {
-    
+
     public function __construct(){
         if(is_admin()){
-	    add_action('admin_menu', array($this, 'add_wpoven_manager_page'));
-	    add_action('admin_init', array($this, 'wpoven_manager_page_init'));
+            add_action('admin_menu', array($this, 'add_wpoven_manager_page'));
+            add_action('admin_init', array($this, 'wpoven_manager_page_init'));
             add_action('update_option_wpoven_manager_maintenance', array($this, 'change_maintenance'), 10, 2);
             add_action('update_option_wpoven_manager_cache', array($this, 'change_cache'), 10, 2);
-            
+
             add_action('admin_footer', array($this, 'add_javascript'));
             add_action('wp_ajax_wpoven_manager_flush_all', array($this, 'ajax_flush_cache'));
-	}
-        
+        }
+
         $this->load_plugins();
-        
+
         register_activation_hook(WPOVEN_MANAGER_DIR.'/wpoven-manager.php', array($this, 'activate'));
         register_deactivation_hook(WPOVEN_MANAGER_DIR.'/wpoven-manager.php', array($this, 'deactivate'));
-        
+
         add_action('send_headers', array($this, 'send_headers'));
     }
-    
+
     public function add_wpoven_manager_page() {
         add_options_page('WPOven Manager', 'WPOven', 'manage_options', 'wpovenmanager', array($this, 'create_wpoven_manager_page'));
     }
-    
+
     public function create_wpoven_manager_page() {
         if( ! current_user_can('manage_options') ) {
             wp_die( __('You do not have sufficient permissions to access this page.') );
@@ -34,28 +34,30 @@ class WPOven_Manager_Admin {
             <h2>WPOVEN</h2>
             <form method="post" action="options.php">
                 <?php
-                    settings_fields('wpoven_manager_options');	
+                    settings_fields('wpoven_manager_options');
                     do_settings_sections('wpovenmanager');
                 ?>
                 <?php submit_button(); ?>
             </form>
-            
-            <a class="button" id="wpoven_manager_flush_all">Empty All Caches</a>
+
+            <?php if(!(defined('WPOVEN_MANAGER_SANDBOX') && WPOVEN_MANAGER_SANDBOX)) { ?>
+                <a class="button" id="wpoven_manager_flush_all">Empty All Caches</a>
+            <?php } ?>
         </div>
         <?php
     }
-    
+
     public function wpoven_manager_page_init() {
         register_setting('wpoven_manager_options', 'wpoven_manager_maintenance');
         register_setting('wpoven_manager_options', 'wpoven_manager_cache');
-        
+
         add_settings_section(
             'wpoven_manager_section',
             'WPOven Manager Settings',
             array($this, 'wpoven_manager_section_desc'),
             'wpovenmanager'
         );
-        
+
         add_settings_field(
             'wpoven_manager_maintenance',
             'Activate Maintenance Mode',
@@ -63,7 +65,7 @@ class WPOven_Manager_Admin {
             'wpovenmanager',
             'wpoven_manager_section'
         );
-        
+
         add_settings_field(
             'wpoven_manager_cache',
             'Activate Caching',
@@ -71,25 +73,30 @@ class WPOven_Manager_Admin {
             'wpovenmanager',
             'wpoven_manager_section'
         );
-        
+
     }
-    
+
     public function wpoven_manager_section_desc() {
         //echo 'These settings are part of wpoven manager plugin.';
     }
-    
+
     public function wpoven_manager_maintenance_input() {
         $options = get_option('wpoven_manager_maintenance');
         $checked = checked('1', $options, FALSE);
         echo "<input id='wpoven_manager_maintenance' name='wpoven_manager_maintenance' type='checkbox' value='1' $checked />";
     }
-    
+
     public function wpoven_manager_cache_input() {
         $options = get_option('wpoven_manager_cache');
         $checked = checked('1', $options, FALSE);
-        echo "<input id='wpoven_manager_cache' name='wpoven_manager_cache' type='checkbox' value='1' $checked />";
+        
+        if(!(defined('WPOVEN_MANAGER_SANDBOX') && WPOVEN_MANAGER_SANDBOX)) {
+            echo "<input id='wpoven_manager_cache' name='wpoven_manager_cache' type='checkbox' value='1' $checked />";
+        } else {
+            echo "<input id='wpoven_manager_cache' disabled='disabled' name='wpoven_manager_cache' type='checkbox' value='1' $checked />";
+        }
     }
-    
+
     public function add_javascript() {
         $nonce = wp_create_nonce('wpoven_manager_flush_all');
         ?>
@@ -118,54 +125,58 @@ class WPOven_Manager_Admin {
         </script>
         <?php
     }
-    
+
     public function ajax_flush_cache() {
         check_ajax_referer('wpoven_manager_flush_all');
-        
+
         if(!current_user_can('manage_options')) {
             wp_die( __('You do not have sufficient permissions to perform this action.') );
         }
-        
+
         $this->w3tc_cache_flush();
-        
+
         echo 1;
         die;
     }
-    
+
     public function load_plugins(){
         require_once(WPOVEN_MANAGER_DIR.'/nginx-compatibility.php');
-        
-        $cache = get_option('wpoven_manager_cache');
-        if($cache === "1"){
-            require_once(WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php');
+
+        require_once(WPOVEN_MANAGER_DIR.'/wpoven-manager-sandbox.php');
+
+        if(!(defined('WPOVEN_MANAGER_SANDBOX') && WPOVEN_MANAGER_SANDBOX)){
+            $cache = get_option('wpoven_manager_cache');
+            if($cache === "1"){
+                require_once(WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php');
+            }
         }
-        
+
         $maintenance = get_option('wpoven_manager_maintenance');
         if($maintenance === "1"){
             require_once(WPOVEN_MANAGER_DIR.'/wpoven-manager-maintenance.php');
         }
     }
-    
+
     public function activate() {
         add_option('wpoven_manager_maintenance', '');
         add_option('wpoven_manager_cache', '1');
         $this->activate_w3tc();
         $this->w3tc_cache_flush();
     }
-    
+
     public function deactivate() {
         $this->w3tc_cache_flush();
         delete_option('wpoven_manager_maintenance');
         delete_option('wpoven_manager_cache');
     }
-    
+
     public function activate_w3tc() {
         require_once(WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php');
         if(isset($root)){
             $root->activate(false);
         }
     }
-    
+
     public function deactivate_w3tc() {
         require_once(WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php');
         if(isset($root)){
@@ -175,7 +186,7 @@ class WPOven_Manager_Admin {
             $root->deactivate();
         }
     }
-    
+
     public function w3tc_cache_flush() {
         if ( function_exists( 'w3tc_pgcache_flush' ) ) {
             w3tc_pgcache_flush();
@@ -196,13 +207,13 @@ class WPOven_Manager_Admin {
             w3tc_varnish_flush();
         }
     }
-    
+
     public function change_maintenance($oldvalue, $newvalue) {
         if($oldvalue !== $newvalue){
             $this->w3tc_cache_flush();
         }
     }
-    
+
     public function change_cache($oldvalue, $newvalue) {
         if($oldvalue !== $newvalue){
             if('1' === $newvalue) {
@@ -214,7 +225,7 @@ class WPOven_Manager_Admin {
             }
         }
     }
-    
+
     public function send_headers() {
         $cache = get_option('wpoven_manager_cache');
         if($cache === "1"){
@@ -224,7 +235,7 @@ class WPOven_Manager_Admin {
         }
         @header("WPOven-Cache: $state");
     }
-    
+
 }
 
 $wpoven_manager = new WPOven_Manager_Admin();
