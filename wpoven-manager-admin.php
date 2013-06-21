@@ -6,7 +6,6 @@ class WPOven_Manager_Admin {
             add_action('admin_menu', array($this, 'add_wpoven_manager_page'));
             add_action('admin_init', array($this, 'wpoven_manager_page_init'));
             add_action('update_option_wpoven_manager_maintenance', array($this, 'change_maintenance'), 10, 2);
-            add_action('update_option_wpoven_manager_cache', array($this, 'change_cache'), 10, 2);
 
             add_action('admin_footer', array($this, 'add_javascript'));
             add_action('wp_ajax_wpoven_manager_flush_all', array($this, 'ajax_flush_cache'));
@@ -17,7 +16,7 @@ class WPOven_Manager_Admin {
         register_activation_hook(WPOVEN_MANAGER_DIR.'/wpoven-manager.php', array($this, 'activate'));
         register_deactivation_hook(WPOVEN_MANAGER_DIR.'/wpoven-manager.php', array($this, 'deactivate'));
 
-        add_action('send_headers', array($this, 'send_headers'));
+        $this->add_flush_actions();
     }
 
     public function add_wpoven_manager_page() {
@@ -49,7 +48,6 @@ class WPOven_Manager_Admin {
 
     public function wpoven_manager_page_init() {
         register_setting('wpoven_manager_options', 'wpoven_manager_maintenance');
-        register_setting('wpoven_manager_options', 'wpoven_manager_cache');
 
         add_settings_section(
             'wpoven_manager_section',
@@ -66,14 +64,6 @@ class WPOven_Manager_Admin {
             'wpoven_manager_section'
         );
 
-        add_settings_field(
-            'wpoven_manager_cache',
-            'Activate Caching',
-            array($this, 'wpoven_manager_cache_input'),
-            'wpovenmanager',
-            'wpoven_manager_section'
-        );
-
     }
 
     public function wpoven_manager_section_desc() {
@@ -84,17 +74,6 @@ class WPOven_Manager_Admin {
         $options = get_option('wpoven_manager_maintenance');
         $checked = checked('1', $options, FALSE);
         echo "<input id='wpoven_manager_maintenance' name='wpoven_manager_maintenance' type='checkbox' value='1' $checked />";
-    }
-
-    public function wpoven_manager_cache_input() {
-        $options = get_option('wpoven_manager_cache');
-        $checked = checked('1', $options, FALSE);
-        
-        if(!(defined('WPOVEN_MANAGER_SANDBOX') && WPOVEN_MANAGER_SANDBOX)) {
-            echo "<input id='wpoven_manager_cache' name='wpoven_manager_cache' type='checkbox' value='1' $checked />";
-        } else {
-            echo "<input id='wpoven_manager_cache' disabled='disabled' name='wpoven_manager_cache' type='checkbox' value='1' $checked />";
-        }
     }
 
     public function add_javascript() {
@@ -133,7 +112,7 @@ class WPOven_Manager_Admin {
             wp_die( __('You do not have sufficient permissions to perform this action.') );
         }
 
-        $this->w3tc_cache_flush();
+        $this->flush_all_cache();
 
         echo 1;
         die;
@@ -144,13 +123,6 @@ class WPOven_Manager_Admin {
 
         require_once(WPOVEN_MANAGER_DIR.'/wpoven-manager-sandbox.php');
 
-        if(!(defined('WPOVEN_MANAGER_SANDBOX') && WPOVEN_MANAGER_SANDBOX)){
-            $cache = get_option('wpoven_manager_cache');
-            if($cache === "1"){
-                require_once(WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php');
-            }
-        }
-
         $maintenance = get_option('wpoven_manager_maintenance');
         if($maintenance === "1"){
             require_once(WPOVEN_MANAGER_DIR.'/wpoven-manager-maintenance.php');
@@ -159,81 +131,57 @@ class WPOven_Manager_Admin {
 
     public function activate() {
         add_option('wpoven_manager_maintenance', '');
-        add_option('wpoven_manager_cache', '1');
-        $this->activate_w3tc();
-        $this->w3tc_cache_flush();
     }
 
     public function deactivate() {
-        $this->w3tc_cache_flush();
         delete_option('wpoven_manager_maintenance');
-        delete_option('wpoven_manager_cache');
-    }
-
-    public function activate_w3tc() {
-        require_once(WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php');
-        if(isset($root)){
-            $root->activate(false);
-        }
-    }
-
-    public function deactivate_w3tc() {
-        require_once(WPOVEN_MANAGER_DIR.'/w3-total-cache/w3-total-cache.php');
-        if(isset($root)){
-            $root->deactivate();
-        } else {
-            $root = w3_instance('W3_Root');
-            $root->deactivate();
-        }
-    }
-
-    public function w3tc_cache_flush() {
-        if ( function_exists( 'w3tc_pgcache_flush' ) ) {
-            w3tc_pgcache_flush();
-        }
-        if ( function_exists( 'w3tc_minify_flush' ) ) {
-            w3tc_minify_flush();
-        }
-        if ( function_exists( 'w3tc_dbcache_flush' ) ) {
-            w3tc_dbcache_flush();
-        }
-        if ( function_exists( 'w3tc_objectcache_flush' ) ) {
-            w3tc_objectcache_flush();
-        }
-        if ( function_exists( 'w3tc_cdncache_purge' ) ) {
-            w3tc_cdncache_purge();
-        }
-        if ( function_exists( 'w3tc_varnish_flush' ) ) {
-            w3tc_varnish_flush();
-        }
     }
 
     public function change_maintenance($oldvalue, $newvalue) {
         if($oldvalue !== $newvalue){
-            $this->w3tc_cache_flush();
+            $this->flush_all_cache();
         }
     }
 
-    public function change_cache($oldvalue, $newvalue) {
-        if($oldvalue !== $newvalue){
-            if('1' === $newvalue) {
-                $this->activate_w3tc();
-                $this->w3tc_cache_flush();
-            } else if('' === (string) $newvalue) {
-                $this->w3tc_cache_flush();
-                $this->deactivate_w3tc();
-            }
+    public function add_flush_actions(){
+        // flush automatic apc cache if in sandbox
+        add_action('switch_theme', array($this, 'flush_all_cache'));
+        add_action('publish_phone', array($this, 'flush_all_cache'));
+        add_action('publish_post', array($this, 'flush_all_cache'));
+        add_action('edit_post', array($this, 'flush_all_cache'));
+        add_action('save_post', array($this, 'flush_all_cache'));
+        add_action('wp_trash_post', array($this, 'flush_all_cache'));
+        add_action('delete_post', array($this, 'flush_all_cache'));
+        add_action('trackback_post', array($this, 'flush_all_cache'));
+        add_action('pingback_postt', array($this, 'flush_all_cache'));
+        add_action('comment_post', array($this, 'flush_all_cache'));
+        add_action('edit_comment', array($this, 'flush_all_cache'));
+        add_action('wp_set_comment_status', array($this, 'flush_all_cache'));
+        add_action('delete_comment', array($this, 'flush_all_cache'));
+        add_action('comment_cookie_lifetime', array($this, 'flush_all_cache'));
+        add_action('wp_update_nav_menu', array($this, 'flush_all_cache'));
+        add_action('edit_user_profile_update', array($this, 'flush_all_cache'));
+    }
+
+    public function flush_all_cache() {
+        $url = get_site_url();
+        $url = $url . '/';
+        $this->flush_varnish_cache($url);
+        $this->flush_apc_cache();
+    }
+
+    public function flush_varnish_cache($url) {
+        if(!(defined('WPOVEN_MANAGER_SANDBOX') && WPOVEN_MANAGER_SANDBOX)) {
+            wp_remote_request($url, array('method' => 'PURGE'));
         }
     }
 
-    public function send_headers() {
-        $cache = get_option('wpoven_manager_cache');
-        if($cache === "1"){
-            $state = 'On';
-        } else {
-            $state = 'Off';
+    public function flush_apc_cache() {
+        if ( function_exists( 'apc_clear_cache' ) ) {
+            apc_clear_cache();
+            apc_clear_cache('user');
+            apc_clear_cache('opcode');
         }
-        @header("WPOven-Cache: $state");
     }
 
 }
