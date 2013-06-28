@@ -123,6 +123,8 @@ class WPOven_Manager_Admin {
 
         require_once(WPOVEN_MANAGER_DIR.'/wpoven-manager-sandbox.php');
 
+        require_once(WPOVEN_MANAGER_DIR.'/hyper-cache/plugin.php');
+
         $maintenance = get_option('wpoven_manager_maintenance');
         if($maintenance === "1"){
             require_once(WPOVEN_MANAGER_DIR.'/wpoven-manager-maintenance.php');
@@ -131,10 +133,12 @@ class WPOven_Manager_Admin {
 
     public function activate() {
         add_option('wpoven_manager_maintenance', '');
+        hyper_activate();
     }
 
     public function deactivate() {
         delete_option('wpoven_manager_maintenance');
+        hyper_deactivate();
     }
 
     public function change_maintenance($oldvalue, $newvalue) {
@@ -168,6 +172,7 @@ class WPOven_Manager_Admin {
         $url = $url . '/';
         $this->flush_varnish_cache($url);
         $this->flush_apc_cache();
+        $this->flush_hyper_cache();
     }
 
     public function flush_varnish_cache($url) {
@@ -182,6 +187,10 @@ class WPOven_Manager_Admin {
             apc_clear_cache('user');
             apc_clear_cache('opcode');
         }
+    }
+
+    public function flush_hyper_cache() {
+        hyper_delete_path(WP_CONTENT_DIR . '/cache/hyper-cache');
     }
 
 }
