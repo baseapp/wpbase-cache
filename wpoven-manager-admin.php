@@ -6,6 +6,7 @@ class WPOven_Manager_Admin {
             add_action('admin_menu', array($this, 'add_wpoven_manager_page'));
             add_action('admin_init', array($this, 'wpoven_manager_page_init'));
             add_action('update_option_wpoven_manager_maintenance', array($this, 'change_maintenance'), 10, 2);
+            add_action('update_option_wpoven_manager_page_cache', array($this, 'change_page_cache'), 10, 2);
 
             add_action('admin_footer', array($this, 'add_javascript'));
             add_action('wp_ajax_wpoven_manager_flush_all', array($this, 'ajax_flush_cache'));
@@ -48,6 +49,8 @@ class WPOven_Manager_Admin {
 
     public function wpoven_manager_page_init() {
         register_setting('wpoven_manager_options', 'wpoven_manager_maintenance');
+        register_setting('wpoven_manager_options', 'wpoven_manager_page_cache');
+        register_setting('wpoven_manager_options', 'wpoven_manager_varnish_cache');
 
         add_settings_section(
             'wpoven_manager_section',
@@ -64,6 +67,22 @@ class WPOven_Manager_Admin {
             'wpoven_manager_section'
         );
 
+        add_settings_field(
+            'wpoven_manager_page_cache',
+            'Activate Page Cache',
+            array($this, 'wpoven_manager_page_cache_input'),
+            'wpovenmanager',
+            'wpoven_manager_section'
+        );
+
+        add_settings_field(
+            'wpoven_manager_varnish_cache',
+            'Activate Varnish Caching',
+            array($this, 'wpoven_manager_varnish_cache_input'),
+            'wpovenmanager',
+            'wpoven_manager_section'
+        );
+
     }
 
     public function wpoven_manager_section_desc() {
@@ -74,6 +93,28 @@ class WPOven_Manager_Admin {
         $options = get_option('wpoven_manager_maintenance');
         $checked = checked('1', $options, FALSE);
         echo "<input id='wpoven_manager_maintenance' name='wpoven_manager_maintenance' type='checkbox' value='1' $checked />";
+    }
+
+    public function wpoven_manager_page_cache_input() {
+        $options = get_option('wpoven_manager_page_cache');
+        $checked = checked('1', $options, FALSE);
+
+        if(!(defined('WPOVEN_MANAGER_SANDBOX') && WPOVEN_MANAGER_SANDBOX)) {
+            echo "<input id='wpoven_manager_page_cache' name='wpoven_manager_page_cache' type='checkbox' value='1' $checked />";
+        } else {
+            echo "<input id='wpoven_manager_page_cache' disabled='disabled' name='wpoven_manager_page_cache' type='checkbox' value='1' $checked />";
+        }
+    }
+
+    public function wpoven_manager_varnish_cache_input() {
+        $options = get_option('wpoven_manager_varnish_cache');
+        $checked = checked('1', $options, FALSE);
+
+        if(!(defined('WPOVEN_MANAGER_SANDBOX') && WPOVEN_MANAGER_SANDBOX)) {
+            echo "<input id='wpoven_manager_varnish_cache' name='wpoven_manager_varnish_cache' type='checkbox' value='1' $checked />";
+        } else {
+            echo "<input id='wpoven_manager_varnish_cache' disabled='disabled' name='wpoven_manager_varnish_cache' type='checkbox' value='1' $checked />";
+        }
     }
 
     public function add_javascript() {
@@ -123,27 +164,69 @@ class WPOven_Manager_Admin {
 
         require_once(WPOVEN_MANAGER_DIR.'/wpoven-manager-sandbox.php');
 
-        require_once(WPOVEN_MANAGER_DIR.'/hyper-cache/plugin.php');
+        if(!(defined('WPOVEN_MANAGER_SANDBOX') && WPOVEN_MANAGER_SANDBOX)){
+            $cache = get_option('wpoven_manager_cache');
+            if($cache === "1"){
+                require_once(WPOVEN_MANAGER_DIR.'/hyper-cache/plugin.php');
+            }
+        }
 
         $maintenance = get_option('wpoven_manager_maintenance');
         if($maintenance === "1"){
             require_once(WPOVEN_MANAGER_DIR.'/wpoven-manager-maintenance.php');
         }
+
+        $cache = get_option('wpoven_manager_cache');
+        if(!$cache === "1"){
+            $this->deactivate_varnish_cache();
+        }
     }
 
     public function activate() {
         add_option('wpoven_manager_maintenance', '');
-        hyper_activate();
+        add_option('wpoven_manager_page_cache', '1');
+        add_option('wpoven_manager_varnish_cache', '1');
+        $this->activate_page_cache();
     }
 
     public function deactivate() {
         delete_option('wpoven_manager_maintenance');
-        hyper_deactivate();
+        delete_option('wpoven_manager_cache');
+        $this->deactivate_page_cache();
+    }
+
+    public function activate_page_cache() {
+        require_once(WPOVEN_MANAGER_DIR.'/hyper-cache/plugin.php');
+        if ( function_exists( 'hyper_activate' ) ) {
+            hyper_activate();
+        }
+    }
+
+    public function deactivate_page_cache() {
+        if ( function_exists( 'hyper_deactivate' ) ) {
+            hyper_deactivate();
+        }
+    }
+
+    public function deactivate_varnish_cache() {
+        add_action('init', array($this, 'set_cookie'));
     }
 
     public function change_maintenance($oldvalue, $newvalue) {
         if($oldvalue !== $newvalue){
             $this->flush_all_cache();
+        }
+    }
+
+    public function change_page_cache($oldvalue, $newvalue) {
+        if($oldvalue !== $newvalue){
+            if('1' === $newvalue) {
+                $this->activate_page_cache();
+                $this->flush_page_cache();
+            } else if('' === (string) $newvalue) {
+                $this->flush_page_cache();
+                $this->deactivate_page_cache();
+            }
         }
     }
 
@@ -172,7 +255,7 @@ class WPOven_Manager_Admin {
         $url = $url . '/';
         $this->flush_varnish_cache($url);
         $this->flush_apc_cache();
-        $this->flush_hyper_cache();
+        $this->flush_page_cache();
     }
 
     public function flush_varnish_cache($url) {
@@ -189,8 +272,16 @@ class WPOven_Manager_Admin {
         }
     }
 
-    public function flush_hyper_cache() {
-        hyper_delete_path(WP_CONTENT_DIR . '/cache/hyper-cache');
+    public function flush_page_cache() {
+        if ( function_exists( 'hyper_delete_path' ) ) {
+            hyper_delete_path(WP_CONTENT_DIR . '/cache/hyper-cache');
+        }
+    }
+
+    public function set_cookie() {
+        if (!isset($_COOKIE['wpoven-no-cache'])) {
+            setcookie('wpoven-no-cache', 1, time() + 120);
+        }
     }
 
 }
