@@ -165,7 +165,7 @@ class WPOven_Manager_Admin {
         require_once(WPOVEN_MANAGER_DIR.'/wpoven-manager-sandbox.php');
 
         if(!(defined('WPOVEN_MANAGER_SANDBOX') && WPOVEN_MANAGER_SANDBOX)){
-            $cache = get_option('wpoven_manager_cache');
+            $cache = get_option('wpoven_manager_page_cache');
             if($cache === "1"){
                 require_once(WPOVEN_MANAGER_DIR.'/hyper-cache/plugin.php');
             }
@@ -176,8 +176,8 @@ class WPOven_Manager_Admin {
             require_once(WPOVEN_MANAGER_DIR.'/wpoven-manager-maintenance.php');
         }
 
-        $cache = get_option('wpoven_manager_cache');
-        if(!$cache === "1"){
+        $cache = get_option('wpoven_manager_varnish_cache');
+        if(!($cache === "1")){
             $this->deactivate_varnish_cache();
         }
     }
@@ -191,7 +191,8 @@ class WPOven_Manager_Admin {
 
     public function deactivate() {
         delete_option('wpoven_manager_maintenance');
-        delete_option('wpoven_manager_cache');
+        delete_option('wpoven_manager_page_cache');
+        delete_option('wpoven_manager_varnish_cache');
         $this->deactivate_page_cache();
     }
 
