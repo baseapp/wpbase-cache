@@ -1,6 +1,6 @@
 === WPbase Cache ===
 Contributors: baseapp
-Tags: cache,chaching,speed,performance,wp cache,optimization,staticization,nginx,apc,varnish
+Tags: cache,chaching,speed,performance,db cache,optimization,nginx,apc,varnish
 Requires at least: 3.5
 Tested up to: 3.5
 Stable tag: trunk
@@ -12,7 +12,7 @@ A wordpress plugin for managing various tasks including chaching, chache purging
 
 == Description ==
 
-Plugin is developed to compile all different plugins used for hosting wordpress on varnish + nginx + php-fpm + php-apc server stack. This plugin includes nginx-compatibility, hyper-cache for nginx and page cache. This plguin also support varnish cache management with given default.vcl 
+Plugin is developed to compile all different plugins used for hosting wordpress on varnish + nginx + php-fpm + php-apc server stack. This plugin includes nginx-compatibility, db-cache-reloaded-fix for nginx and page cache. This plguin also support varnish cache management with given default.vcl 
 
 == Installation ==
 
