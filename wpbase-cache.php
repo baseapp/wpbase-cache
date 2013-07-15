@@ -2,10 +2,10 @@
 /*
 Plugin Name: WPBase-Cache
 Plugin URI: https://github.com/baseapp/wpbase-cache
-Description: A wordpress plugin for managing various tasks including chaching, chache purging, updating components, providing instant state info etc.
+Description: A wordpress plugin for using all caches on varnish, nging, php-fpm stack with php-apc. This plugin includes db-cache-reloaded-fix for dbcache.
 Version: 0.0.1
 Author: Tarun Bansal
-Author URI: http://noushter.wordpress.com
+Author URI: http://blog.wpoven.com
 License: GPL2
 
 This program is free software; you can redistribute it and/or modify
