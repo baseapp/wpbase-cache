@@ -97,6 +97,11 @@ class WPBase_Cache {
 
         if(!isset($options['varnish_cache']) || $options['varnish_cache'] != '1'){
             add_action('init', array($this, 'set_cookie'));
+        } else {
+            if(isset($options['view_meta']) && !empty($options['view_meta']) && !is_admin()){
+                $this->view_meta = $options['view_meta'];
+                add_action('wp_footer', array($this, 'view_count_script_footer'));
+            }
         }
     }
 
@@ -108,21 +113,30 @@ class WPBase_Cache {
 
     public function add_flush_actions(){
         add_action('switch_theme', array($this, 'flush_all_cache'));
-        add_action('publish_phone', array($this, 'flush_all_cache'));
-        add_action('publish_post', array($this, 'flush_all_cache'));
-        add_action('edit_post', array($this, 'flush_all_cache'));
-        add_action('save_post', array($this, 'flush_all_cache'));
-        add_action('wp_trash_post', array($this, 'flush_all_cache'));
-        add_action('delete_post', array($this, 'flush_all_cache'));
-        add_action('trackback_post', array($this, 'flush_all_cache'));
-        add_action('pingback_postt', array($this, 'flush_all_cache'));
-        add_action('comment_post', array($this, 'flush_all_cache'));
-        add_action('edit_comment', array($this, 'flush_all_cache'));
-        add_action('wp_set_comment_status', array($this, 'flush_all_cache'));
-        add_action('delete_comment', array($this, 'flush_all_cache'));
-        add_action('comment_cookie_lifetime', array($this, 'flush_all_cache'));
-        add_action('wp_update_nav_menu', array($this, 'flush_all_cache'));
-        add_action('edit_user_profile_update', array($this, 'flush_all_cache'));
+        add_action('publish_post', array($this, 'flush_post'));
+        add_action('edit_post', array($this, 'flush_post'));
+        add_action('save_post', array($this, 'flush_post'));
+        add_action('wp_trash_post', array($this, 'flush_post'));
+        add_action('delete_post', array($this, 'flush_post'));
+        add_action('trackback_post', array($this, 'flush_comment'));
+        add_action('pingback_post', array($this, 'flush_comment'));
+        add_action('comment_post', array($this, 'flush_comment'));
+        add_action('edit_comment', array($this, 'flush_comment'));
+        add_action('wp_set_comment_status', array($this, 'flush_comment'));
+        add_action('delete_comment', array($this, 'flush_comment'));
+    }
+
+    public function flush_post($post_id) {
+        $url = get_permalink($post_id);
+
+        $this->flush_varnish_cache($url);
+    }
+
+    public function flush_comment($comment_id) {
+        $comment = get_comment($comment_id);
+        $post_id = $comment->comment_post_ID;
+
+        $this->flush_post($post_id);
     }
 
     public function flush_all_cache() {
@@ -140,6 +154,22 @@ class WPBase_Cache {
             wp_remote_request($url, array('method' => 'PURGE'));
         }
     }
+
+    function view_count_script_footer() {
+        $single = is_single();
+        if($single == 1) {
+            $post_id = get_the_ID();
+            $site_url = get_option("siteurl");
+    ?>
+            <script type="text/javascript">
+                var data = {
+                    post_id : "<?php echo $post_id; ?>",
+                    view_meta : "<?php echo $this->view_meta; ?>"
+                };
+                var url = "<?php echo $site_url; ?>/wp-content/plugins/wpbase-cache/views.php";
+                $.post(url, data, function(data){});
+            </script>
+    <?php } }
 }
 
 $wpbase_cache = new WPBase_Cache();

@@ -60,6 +60,14 @@ class WPBase_Cache_Admin {
             'wpbase_cache_section'
         );
 
+        add_settings_field(
+            'wpbase_cache_options_view_meta',
+            'Enable View Meta',
+            array($this, 'view_meta_input'),
+            'wpbasecache',
+            'wpbase_cache_section'
+        );
+
     }
 
     public function wpbase_cache_section_desc() {
@@ -82,6 +90,13 @@ class WPBase_Cache_Admin {
         } else {
             echo "<input id='wpbase_cache_varnish_cache' disabled='disabled' name='wpbase_cache_options[varnish_cache]' type='checkbox' value='1' $checked />";
         }
+    }
+
+    public function view_meta_input() {
+        $options = get_option('wpbase_cache_options');
+
+        $view_meta = $options['view_meta'];
+        echo "<input id='wpbase_cache_view_meta' name='wpbase_cache_options[view_meta]' type='text' value='$view_meta' />";
     }
 
     public function add_javascript() {
@@ -108,6 +123,18 @@ class WPBase_Cache_Admin {
                     element.replaceWith(message);
                 });
             });
+
+            $('#wpbase_cache_varnish_cache').change(function(){
+                if($(this).is(':checked'))
+                    $('#wpbase_cache_view_meta').parent().parent().show();
+                else
+                    $('#wpbase_cache_view_meta').parent().parent().hide();
+            });
+
+            if($('#wpbase_cache_varnish_cache').is(':checked'))
+                $('#wpbase_cache_view_meta').parent().parent().show();
+            else
+                $('#wpbase_cache_view_meta').parent().parent().hide();
         });
         </script>
         <?php
