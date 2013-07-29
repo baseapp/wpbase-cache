@@ -105,6 +105,7 @@ class WPBase_Cache_Admin {
 
         $view_meta = $options['view_meta'];
         echo "<input id='wpbase_cache_view_meta' name='wpbase_cache_options[view_meta]' type='text' value='$view_meta' />";
+        echo "<p class='description'>Mostly view counts are handeld by themes and you to know which postmeta key is used to view count of each post.<br />Fill in value of that postmeta key here.</p>";
     }
 
     public function action_key_input() {
@@ -112,6 +113,7 @@ class WPBase_Cache_Admin {
 
         $action_key = $options['action_key'];
         echo "<textarea id='wpbase_cache_action_key' name='wpbase_cache_options[action_key]' rows='3' cols='20' >$action_key</textarea>";
+        echo "<p class='description'>Fill in the comma seperated values of action name and post id key for flushing post with the given id on that action.<br />For using multiple action,key pair write them one on each line for example - <br />postratings,pid<br />myaction,mypostid<br />First one is the setting value for famous wp-postrating plugin and second one is a dummy entry</p>";
     }
 
     public function add_javascript() {
