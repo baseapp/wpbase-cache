@@ -31,6 +31,8 @@ define('WPBASE_CACHE_INC_DIR', WP_PLUGIN_DIR.'/wpbase-cache/inc');
 class WPBase_Cache {
 
     public $wp_db_cache_reloaded = null;
+    private $action_keys = array();
+    private $view_meta = "";
 
     public function __construct() {
 
@@ -102,6 +104,18 @@ class WPBase_Cache {
                 $this->view_meta = $options['view_meta'];
                 add_action('wp_footer', array($this, 'view_count_script_footer'));
             }
+
+            $action_keys = explode("\n", $options['action_key']);
+            foreach ($action_keys as $action_key) {
+                $action_key = explode(",", $action_key);
+                if(count($action_key) == 2) {
+                    $action = $action_key[0];
+                    $key = $action_key[1];
+                    $this->action_keys[$action] = $key;
+                    add_action('wp_ajax_' . $action, array($this, 'flush_action_key'),9);
+                    add_action('wp_ajax_nopriv_' . $action, array($this, 'flush_action_key'),9);
+                }
+            }
         }
     }
 
@@ -124,6 +138,14 @@ class WPBase_Cache {
         add_action('edit_comment', array($this, 'flush_comment'));
         add_action('wp_set_comment_status', array($this, 'flush_comment'));
         add_action('delete_comment', array($this, 'flush_comment'));
+    }
+
+    public function flush_action_key() {
+        $action = $_REQUEST['action'];
+        $key = $this->action_keys[$action];
+
+        $post_id = intval($_REQUEST[$key]);
+        $this->flush_post($post_id);
     }
 
     public function flush_post($post_id) {

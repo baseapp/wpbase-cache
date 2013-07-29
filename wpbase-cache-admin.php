@@ -68,6 +68,14 @@ class WPBase_Cache_Admin {
             'wpbase_cache_section'
         );
 
+        add_settings_field(
+            'wpbase_cache_options_action_key',
+            'Action and key pairs',
+            array($this, 'action_key_input'),
+            'wpbasecache',
+            'wpbase_cache_section'
+        );
+
     }
 
     public function wpbase_cache_section_desc() {
@@ -97,6 +105,13 @@ class WPBase_Cache_Admin {
 
         $view_meta = $options['view_meta'];
         echo "<input id='wpbase_cache_view_meta' name='wpbase_cache_options[view_meta]' type='text' value='$view_meta' />";
+    }
+
+    public function action_key_input() {
+        $options = get_option('wpbase_cache_options');
+
+        $action_key = $options['action_key'];
+        echo "<textarea id='wpbase_cache_action_key' name='wpbase_cache_options[action_key]' rows='3' cols='20' >$action_key</textarea>";
     }
 
     public function add_javascript() {
