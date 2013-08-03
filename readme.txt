@@ -8,7 +8,7 @@ Donate link:
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-A wordpress plugin for using all caches on varnish, nging, php-fpm stack with php-apc. This plugin includes db-cache-reloaded-fix for dbcache.
+A wordpress plugin for using all caches on varnish, nginx, php-fpm stack with php-apc. This plugin includes db-cache-reloaded-fix for dbcache.
 
 == Description ==
 
@@ -19,7 +19,9 @@ Thanks to:
 - Ivan Kristianto
 - Vladimir Kolesnikov
 
-Visit our blog for more information on deployment of wordpress on varnish, nginx and php-fpm stack at [WPOven Blog](http://blog.wpoven.com).
+Visit our blog for more information on deployment of wordpress on varnish, nginx and php-fpm stack at [WPOven Blog](http://blog.wpoven.com/2013/08/03/wpbase-cache-plugin-features-and-advantages/).
+
+Please note that generally shared hosting don't have varnish + nginx as server software so this plugin will not work on shared hostings.
 
 == Installation ==
 
@@ -27,6 +29,7 @@ Visit our blog for more information on deployment of wordpress on varnish, nginx
 2. copy and paste contents of utils/nginx-sample in your nginx vhosts file
 3. restart both varnish and nginx
 4. Put the plugin folder into [wordpress_dir]/wp-content/plugins/
+5. Make folders [wordpress_dir]/wp-content/ and [wordpress_dir]/wp-content/plugins/wpbase-cache/inc/db-cache-reloaded-fix writable, change their permission to 755.
 5. Go into the WordPress admin interface and activate the plugin
 6. Optional: go to the options page and configure the plugin
 
@@ -42,8 +45,8 @@ No screenshots are available.
 
 == Changelog ==
 
-= 0.0.1 =
-First alpha version of plugin
+= 1.0.0 =
+First stable version of plugin
 
 == Upgrade Notice ==
 No upgrades available yet
